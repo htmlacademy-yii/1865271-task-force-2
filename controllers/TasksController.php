@@ -1,23 +1,21 @@
 <?php
 
 namespace app\controllers;
-
+use Yii;
 use app\models\Task;
 use app\models\Category;
 use app\models\TaskSearch;
 use app\models\Response as TaskResponse;
-use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 use yii\helpers\ArrayHelper;
 use yii\data\ActiveDataProvider;
-use yii\web\Response;
 
 
 /**
  * TaskController implements the CRUD actions for Task model.
  */
-class TasksController extends Controller
+class TasksController extends BaseController
 {
     /**
      * @inheritDoc

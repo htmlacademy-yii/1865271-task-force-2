@@ -54,14 +54,26 @@ class RegistrationForm extends Model
         if (!$this->validate()) {
             return false;
         }
-        $user = new User;
-        $user->type = $this->responsible ? TaskInterface::TYPE_EXECUTOR : TaskInterface::TYPE_CUSTOMER;
-        $user->email = $this->email;
-        $user->name = $this->name;
-        $user->password_field = $this->password_field;
-        $user->city_id = $this->city_id;
-        $user->load($this->attributes, '');
-        return $user->save();
+        $transaction = Yii::$app->db->beginTransaction();
+        try {
+            $user = new User;
+            $user->type = $this->responsible ? TaskInterface::TYPE_EXECUTOR : TaskInterface::TYPE_CUSTOMER;
+            $user->email = $this->email;
+            $user->name = $this->name;
+            $user->password_field = $this->password_field;
+            $user->city_id = $this->city_id;
+            $user->load($this->attributes, '');
+            if ($user->save()) {
+                $profile = new Profile(['user_id' => $user->id]);
+                $profile->save();
+            }
+        } catch (\Exception $ex) {
+            $transaction->rollback();
+            return false;
+        }
+
+        $transaction->commit();
+        return true;
     }
 
     /**

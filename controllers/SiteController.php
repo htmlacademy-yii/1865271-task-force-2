@@ -6,9 +6,11 @@ use Yii;
 use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\Response;
+use yii\helpers\Url;
 use yii\filters\VerbFilter;
 use app\models\LoginForm;
 use app\models\ContactForm;
+use yii\widgets\ActiveForm;
 
 class SiteController extends Controller
 {
@@ -54,6 +56,14 @@ class SiteController extends Controller
         ];
     }
 
+    public function beforeAction($action)
+    {
+        if (!Yii::$app->user->isGuest) {
+            return $this->redirect(Url::to(['tasks/index']));
+        }
+        return parent::beforeAction($action);
+    }
+
     /**
      * Displays homepage.
      *
@@ -61,29 +71,24 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('main');
+        $this->layout = 'landing';
+        $model = new LoginForm();
+        return $this->render('main', ['model' => $model]);
     }
 
-    /**
-     * Login action.
-     *
-     * @return Response|string
-     */
     public function actionLogin()
     {
-        if (!Yii::$app->user->isGuest) {
-            return $this->goHome();
-        }
-
         $model = new LoginForm();
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
+        $post = Yii::$app->request->post();
+        if ($post) {
+            if ($model->load($post) && $model->login()) {
+                return $this->redirect([Url::to(['tasks/index'])]);
+            }
+            $this->response->format = Response::FORMAT_JSON;
+            return ActiveForm::validate($model);
+
         }
 
-        $model->password = '';
-        return $this->render('login', [
-            'model' => $model,
-        ]);
     }
 
     /**

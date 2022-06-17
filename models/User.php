@@ -3,6 +3,7 @@
 namespace app\models;
 
 use Yii;
+use yii\base\NotSupportedException;
 
 /**
  * This is the model class for table "users".
@@ -17,7 +18,7 @@ use Yii;
  * @property string $created
  * @property string|null $last_visited
  * @property string $type
- *
+ * @property string $auth_key
  * @property Category[] $Categories
  * @property ExecutorPhoto[] $executorPhotos
  * @property Response[] $responses
@@ -84,6 +85,14 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
     }
 
     /**
+     * @inheritdoc
+     */
+    public static function findIdentity($id)
+    {
+        return static::findOne(['id' => $id]);
+    }
+
+    /**
      * Gets user rating
      *
      * @return \yii\db\ActiveQuery
@@ -107,6 +116,13 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
         );
     }
 
+    /**
+     * Generates "remember me" authentication key
+     */
+    public function generateAuthKey()
+    {
+        $this->auth_key = Yii::$app->security->generateRandomString();
+    }
 
     /**
      * Gets score
@@ -132,6 +148,16 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
             }
         }
         return count($users);
+    }
+
+    /**
+     * Gets full name
+     *
+     * @return string
+     */
+    public  function getFullname()
+    {
+       return $this->name . " " . $this->surname;
     }
 
     /**
@@ -194,43 +220,35 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
         return $this->hasMany(Task::className(), ['user_id' => 'id']);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function findIdentity($id)
-    {
-        return isset(self::$users[$id]) ? new static(self::$users[$id]) : null;
-    }
 
     /**
      * {@inheritdoc}
      */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-        foreach (self::$users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
-        }
-
-        return null;
+        throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
     }
 
     /**
      * Finds user by username
      *
-     * @param string $username
+     * @param string $email
      * @return static|null
      */
-    public static function findByUsername($username)
+    public static function findByEmail(string $email)
     {
-        foreach (self::$users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
+        return User::find()->where(['email' => $email])->one();
+    }
 
-        return null;
+    /**
+     * Validates password
+     *
+     * @param string $password password to validate
+     * @return bool if password provided is valid for current user
+     */
+    public function validatePassword($password)
+    {
+        return Yii::$app->security->validatePassword($password, $this->password);
     }
 
     /**
@@ -246,7 +264,7 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
      */
     public function getAuthKey()
     {
-        return $this->authKey;
+        return $this->auth_key;
     }
 
     /**
@@ -261,6 +279,9 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
     {
         if ($this->password_field)
             $this->password = Yii::$app->getSecurity()->generatePasswordHash($this->password_field);
+        if (!$this->auth_key) {
+            $this->auth_key = time();
+        }
         return parent::beforeSave($insert);
     }
 }
